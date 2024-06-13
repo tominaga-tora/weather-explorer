@@ -1,95 +1,201 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
-  return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import CountryCard from "./components/CountryCard";
+import WeatherCard from "./components/WeatherCard";
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+type Country = {
+  code: string;
+  name: string;
+  capital: string;
+  emoji: string;
+  currency: string;
+  languages: { name: string }[];
+  continent: { name: string };
+};
 
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
+type Weather = {
+  name: string;
+  main: {
+    temp: number;
+    humidity: number;
+    pressure: number;
+  };
+  weather: {
+    description: string;
+  }[];
+  wind: {
+    speed: number;
+  };
+};
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
+const continentNames: { [key: string]: string } = {
+  Africa: "アフリカ",
+  Antarctica: "南極",
+  Asia: "アジア",
+  Europe: "ヨーロッパ",
+  "North America": "北アメリカ",
+  Oceania: "オセアニア",
+  "South America": "南アメリカ",
+};
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
+const HomePage = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialCity = searchParams.get("city") || "";
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [city, setCity] = useState(initialCity);
+  const [filterContinent, setFilterContinent] = useState<string>("All");
+  const [error, setError] = useState<boolean>(false);
+
+  const [history, setHistory] = useState<{ name: string; error: boolean }[]>(
+    () => {
+      return JSON.parse(localStorage.getItem("weatherSearchHistory") || "[]");
+    }
   );
-}
+
+  useEffect(() => {
+    const initialize = async () => {
+      await fetchCountries();
+      if (initialCity) {
+        fetchWeather(initialCity);
+      }
+    };
+
+    initialize();
+  }, [initialCity]);
+
+  const fetchCountries = async () => {
+    try {
+      const response = await fetch("/api/graphql/countries");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch countries: ${response.status}`);
+      }
+      const data = await response.json();
+      setCountries(data.countries);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const saveHistory = (city: string, error: boolean) => {
+    if (!city.trim()) return; // 空文字の場合は更新しない
+    const isDuplicate = history.some(
+      (item) => item.name === city && item.error === error
+    );
+    if (!isDuplicate) {
+      const updatedHistory = [...history, { name: city, error }].slice(-5); // 最後の5つの検索を保持
+      setHistory(updatedHistory);
+      localStorage.setItem(
+        "weatherSearchHistory",
+        JSON.stringify(updatedHistory)
+      );
+    }
+  };
+
+  const fetchWeather = async (city: string) => {
+    try {
+      const response = await fetch(`/api/rest/weather?city=${city}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch weather: ${response.status}`);
+      }
+      const data = await response.json();
+      setWeather(data);
+      saveHistory(city, false);
+      setError(false);
+    } catch (error) {
+      console.error(error);
+      setWeather(null);
+      saveHistory(city, true);
+      setError(true);
+    }
+  };
+
+  const handleSearch = () => {
+    if (!city.trim()) return; // 空文字の場合は検索しない
+    const encodedCity = encodeURIComponent(city);
+    router.push(`/?city=${encodedCity}`);
+    fetchWeather(city);
+  };
+
+  const handleContinentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFilterContinent(e.target.value);
+  };
+
+  const handleHistoryClick = (name: string) => {
+    const encodedCity = encodeURIComponent(name);
+    router.push(`/?city=${encodedCity}`);
+    setCity(name);
+    fetchWeather(name);
+  };
+
+  const filteredCountries = countries.filter(
+    (country) =>
+      filterContinent === "All" || country.continent.name === filterContinent
+  );
+
+  return (
+    <div>
+      <h1>Weather Explorer</h1>
+      <p>都市名を入力して天気を検索できます。</p>
+      <div>
+        <input
+          type="text"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          placeholder="都市名を入力"
+        />
+        <button onClick={handleSearch}>天気を検索</button>
+      </div>
+      <div>
+        <h2>検索履歴</h2>
+        {history.length > 0 ? (
+          <ul>
+            {history.map((item, index) => (
+              <li
+                key={index}
+                onClick={() => !item.error && handleHistoryClick(item.name)}
+                style={{
+                  textDecoration: item.error ? "line-through" : "none",
+                  cursor: item.error ? "default" : "pointer",
+                  color: item.error ? "grey" : "black",
+                }}
+              >
+                {item.name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>履歴がありません</p>
+        )}
+      </div>
+      {weather !== null || error ? (
+        <WeatherCard weather={weather} error={error} />
+      ) : null}
+      <div>
+        <h2>大陸で絞り込む</h2>
+        <p>国名を参考にすることができます。</p>
+        <select value={filterContinent} onChange={handleContinentChange}>
+          <option value="All">すべて</option>
+          {Array.from(
+            new Set(countries.map((country) => country.continent.name))
+          ).map((continent) => (
+            <option key={continent} value={continent}>
+              {continentNames[continent] || continent}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="countries">
+        {filteredCountries.map((country) => (
+          <CountryCard key={country.code} country={country} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default HomePage;
