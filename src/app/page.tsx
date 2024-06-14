@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CountryCard from "./components/CountryCard";
 import WeatherCard from "./components/WeatherCard";
+import dynamic from "next/dynamic";
 
 type Country = {
   code: string;
@@ -40,7 +41,7 @@ const continentNames: { [key: string]: string } = {
   "South America": "南アメリカ",
 };
 
-const HomePage = () => {
+const HomePageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialCity = searchParams.get("city") || "";
@@ -197,5 +198,11 @@ const HomePage = () => {
     </div>
   );
 };
+
+// const HomePage = HomePageContent;
+// NOTE:これにしたら動いてbuildも通る
+const HomePage = dynamic(() => Promise.resolve(HomePageContent), {
+  ssr: false,
+});
 
 export default HomePage;
