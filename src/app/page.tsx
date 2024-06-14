@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import CountryCard from "./components/CountryCard";
 import WeatherCard from "./components/WeatherCard";
 import dynamic from "next/dynamic";
+import { mockWeather } from "./api/rest/weather/mockWeather";
 
 type Country = {
   code: string;
@@ -99,6 +100,16 @@ const HomePageContent = () => {
 
   const fetchWeather = async (city: string) => {
     try {
+      // NOTE: モックを使う場合はこちらをtrueにする。
+      const isMock = false;
+      if (isMock) {
+        const data = mockWeather(city);
+        setWeather(data);
+        saveHistory(city, false);
+        setError(false);
+        return;
+      }
+
       const response = await fetch(`/api/rest/weather?city=${city}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch weather: ${response.status}`);

@@ -15,13 +15,18 @@ Weather Explorer は、指定した都市の天気情報を表示するウェブ
 https://openweathermap.org/api
 (カントリー API はキー不要)
 
-4.  .env.local ファイルを作成し
+- API のための登録をしない場合(モックを利用する場合)
+  - pages.tsx の isMock を true にする様にお願いします。
+    - 検索フォームに City1 から City10 までを入力すると、それぞれのモックデータが返るようになります。
+    - 検索にない場合 500 エラーを返します
+
+1.  .env.local ファイルを作成し
     NEXT_PUBLIC_OPENWEATHERMAP_API_KEY={API キー}
     を記載
 
-5.  npm run dev
+2.  npm run dev
 
-6.  localhost にアクセスして動作確認
+3.  localhost にアクセスして動作確認
 
 ## 使用方法
 
