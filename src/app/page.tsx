@@ -199,10 +199,10 @@ const HomePageContent = () => {
   );
 };
 
-// const HomePage = HomePageContent;
+const HomePage = HomePageContent;
 // NOTE:これにしたら動いてbuildも通る
-const HomePage = dynamic(() => Promise.resolve(HomePageContent), {
-  ssr: false,
-});
+// const HomePage = dynamic(() => Promise.resolve(HomePageContent), {
+//   ssr: false,
+// });
 
 export default HomePage;
